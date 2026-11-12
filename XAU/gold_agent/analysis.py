@@ -22,7 +22,7 @@ def load_csv(path):
         if name in df.columns:
             df = df.rename(columns={name: "datetime"})
             break
-    df["datetime"] = pd.to_datetime(df["datetime"], utc=True).dt.tz_localize(None)
+    df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
     df = df.set_index("datetime").sort_index()
     df = df[~df.index.duplicated()]
     return df[["open", "high", "low", "close"]].astype(float).dropna()
