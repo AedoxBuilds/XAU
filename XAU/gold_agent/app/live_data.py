@@ -1,45 +1,92 @@
+"""MT5-only live data adapter.
+
+MT5 candle timestamps are UTC. We fetch each timeframe directly and request
+start_pos=1 so the currently forming candle is never used for confirmation.
+"""
 import pandas as pd
 import analysis
 import config
 
 
-def _to_df(rates):
+def _to_ohlc(rates):
+    if rates is None or len(rates) == 0:
+        raise ValueError("MT5 returned no rates.")
     df = pd.DataFrame(rates)
-    df["datetime"] = pd.to_datetime(df["time"], unit="s") - pd.Timedelta(hours=config.MT5_SERVER_OFFSET_HOURS)
-    return df.set_index("datetime")[["open", "high", "low", "close"]].astype(float)
+    if "time" not in df:
+        raise ValueError("MT5 rates do not contain a time field.")
+    df["datetime"] = pd.to_datetime(df["time"], unit="s", utc=True)
+    df = df.set_index("datetime").sort_index()
+    df = df[~df.index.duplicated(keep="last")]
+    return df[["open", "high", "low", "close"]].astype(float).dropna()
 
 
 def fetch_live():
     import MetaTrader5 as mt5
+
     if not mt5.initialize():
-        raise RuntimeError("MT5 is not open or not logged in: %s" % (mt5.last_error(),))
+        raise RuntimeError(f"MT5 initialization failed: {mt5.last_error()}")
     try:
-        mt5.symbol_select(config.MT5_SYMBOL, True)
-        h1 = mt5.copy_rates_from_pos(config.MT5_SYMBOL, mt5.TIMEFRAME_H1, 1, 20000)
-        m15 = mt5.copy_rates_from_pos(config.MT5_SYMBOL, mt5.TIMEFRAME_M15, 1, 15000)
+        if not mt5.symbol_select(config.MT5_SYMBOL, True):
+            raise RuntimeError(
+                f"Cannot select MT5 symbol {config.MT5_SYMBOL!r}: {mt5.last_error()}"
+            )
+        frames = {}
+        for name, (constant_name, count) in config.MT5_TIMEFRAMES.items():
+            timeframe = getattr(mt5, constant_name)
+            rates = mt5.copy_rates_from_pos(config.MT5_SYMBOL, timeframe, 1, count)
+            frame = _to_ohlc(rates)
+            span = analysis.TF_SPAN[name]
+            frame["avail"] = frame.index + span
+            frames[name] = frame
+        tick = mt5.symbol_info_tick(config.MT5_SYMBOL)
+        if tick is None:
+            raise RuntimeError(f"Could not fetch live tick: {mt5.last_error()}")
+        quote = {
+            "bid": float(tick.bid),
+            "ask": float(tick.ask),
+            "spread": float(tick.ask - tick.bid),
+            "tick_time": pd.to_datetime(tick.time_msc, unit="ms", utc=True),
+        }
     finally:
         mt5.shutdown()
-    if h1 is None or m15 is None or len(h1) < 200 or len(m15) < 200:
-        raise ValueError("MT5 gave no data for symbol '%s' (check the name in Market Watch)" % config.MT5_SYMBOL)
-    h1, m15 = _to_df(h1), _to_df(m15)
 
-    frames = {tf: analysis.resample_ohlc(h1, tf) for tf in ["W", "D", "H4"]}
-    frames["M15"] = analysis.resample_ohlc(m15, "M15")
-    cutoff = h1.index[-1] + pd.Timedelta(hours=1)
-    for tf in ["W", "D", "H4"]:
+    # Do not allow higher-timeframe candles that closed after the last closed M15 bar.
+    cutoff = frames["M15"]["avail"].iloc[-1]
+    for tf in ("W", "D", "H4"):
         frames[tf] = frames[tf][frames[tf]["avail"] <= cutoff]
-    return frames
+        if frames[tf].empty:
+            raise ValueError(f"No closed {tf} candles available at the latest M15 close.")
+    return frames, quote
 
 
 def fetch_demo():
-    m15 = analysis.load_csv(config.RAW_CSV).tail(12000)
-    return analysis.make_frames(m15)
+    from pathlib import Path
+    path = Path(config.RAW_CSV)
+    if not path.exists() or path.stat().st_size == 0:
+        raise RuntimeError(
+            "MT5 is unavailable and no non-empty historical CSV exists. "
+            "Refusing to display stale or synthetic data as a live market."
+        )
+    m15 = analysis.load_csv(str(path)).tail(12000)
+    if len(m15) < 200:
+        raise RuntimeError("Demo CSV has fewer than 200 candles; load more historical data.")
+    return analysis.make_frames(m15), None
 
 
 def get_frames():
-    """Returns (frames, note). note is shown on the dashboard in demo mode."""
+    """Return (frames, quote, note); fallback data is always explicitly labelled."""
     try:
-        return fetch_live(), ""
-    except Exception as e:
-        return fetch_demo(), ("DEMO MODE - live data failed (%s). Showing the end of your CSV, "
-                              "not the real market." % str(e)[:150])
+        frames, quote = fetch_live()
+        return frames, quote, ""
+    except Exception as live_error:
+        try:
+            frames, _ = fetch_demo()
+            return frames, None, (
+                "HISTORICAL CSV MODE — MT5 live connection failed: "
+                f"{str(live_error)[:180]}. This is not a live quote."
+            )
+        except Exception as csv_error:
+            raise RuntimeError(
+                f"MT5 live data unavailable ({live_error}); historical fallback unavailable "
+                f"({csv_error})."
+            ) from live_error
