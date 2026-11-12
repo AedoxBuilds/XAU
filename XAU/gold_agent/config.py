@@ -1,5 +1,5 @@
 # ============================================================
-# config.py - centralized Gold Analysis Agent settings
+# Central configuration for Aedox Gold Analysis Agent
 # ============================================================
 from pathlib import Path
 
@@ -11,7 +11,7 @@ STATS_FILE = str(BASE_DIR / "models/quant_stats.csv")
 METRICS_FILE = str(BASE_DIR / "models/model_metrics.csv")
 CHART_FILE = str(BASE_DIR / "app/static/chart.png")
 
-# Strategy settings (preserve existing strategy until new rules are validated)
+# Existing OB/FVG strategy parameters
 RR = 2.0
 SWING_N = {"W": 1, "D": 2, "H4": 2}
 ATR_PERIOD = 14
@@ -23,7 +23,7 @@ MAX_RISK_ATR = 5.0
 MAX_HOLD_BARS = 96
 ZONE_MAX_AGE = {"D": 30, "H4": 60}
 
-# Model
+# Model settings. The model score is not a guaranteed win probability.
 TEST_SIZE = 0.2
 MIN_PROB = 0.5
 FEATURES = [
@@ -32,8 +32,8 @@ FEATURES = [
     "confluence", "prior_touches", "zone_age_hours",
 ]
 
-# Live market data
-MT5_SYMBOL = "XAUUSD"  # Verify exact broker symbol in MT5 Market Watch.
+# MT5 read-only market data configuration
+MT5_SYMBOL = "XAUUSD"  # Change to the exact broker symbol if suffixed (e.g. XAUUSDm).
 MT5_TIMEFRAMES = {
     "W": ("TIMEFRAME_W1", 1200),
     "D": ("TIMEFRAME_D1", 3000),
@@ -46,3 +46,7 @@ LAST_BARS = 3
 LIQUIDITY_SWING = 3
 LIQUIDITY_LOOKBACK = 200
 LIQUIDITY_ATR_TOLERANCE = 0.10
+
+# Explicit safety policy: no order placement or account trade management.
+ANALYSIS_ONLY = True
+ENABLE_ORDER_EXECUTION = False
