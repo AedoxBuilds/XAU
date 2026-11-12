@@ -3,6 +3,10 @@
 {% if note %}<div class="alert alert-warning">{{ note }}</div>{% endif %}
 
 <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.report_json') }}">Download JSON report</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.signals_csv') }}">Download signals CSV</a>
+    </div>
     <div><h3>🥇 Aedox Gold Intelligence</h3><small class="text-muted">MT5 · Multi-timeframe analysis · Analysis only</small></div>
     <span class="text-muted">Price <b>{{ price }}</b> · M15 close {{ last_candle }} · refreshed {{ updated }}</span>
 </div>
