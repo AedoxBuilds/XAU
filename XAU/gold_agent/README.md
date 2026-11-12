@@ -1,17 +1,77 @@
-# Gold Analysis Agent (analysis only, you place the trades)
+# Aedox Gold Analysis Agent
 
-Flow: Weekly bias -> Daily / 4H order blocks + FVGs -> 15m confirmation candle -> model scores the setup.
+MT5-backed XAU/USD analysis dashboard. This application is **analysis-only**: it does not place trades.
 
-## IMPORTANT
-data/raw/gold_15m.csv is SYNTHETIC SAMPLE DATA, only so the code runs.
-Replace it with your real 15-minute gold data (columns: datetime, open, high, low, close).
-Use 3-5+ years so there are enough setups to train on.
+## Current analysis flow
 
-## Run order (always from this folder)
-1. pip install -r requirements.txt
-2. python stage1_preprocess.py   -> data/processed/setups.csv
-3. python stage2_train.py        -> models/gold_model.pkl + quant stats
-4. python run.py                 -> open http://127.0.0.1:5000
+MT5 closed candles -> OHLC validation -> Weekly/Daily/H4 bias -> Daily/H4 OB and FVG zones -> M15 confirmation -> Random Forest setup score -> dashboard.
 
-If live data fails, the dashboard shows a DEMO MODE banner (it uses the end of your CSV).
-All strategy settings (RR, swing size, OB rule, ...) are in config.py.
+The upgrade branch adds:
+- Direct MT5 candle retrieval for W1, D1, H4 and M15.
+- UTC-aware timestamps (no manually hardcoded broker offset).
+- Exclusion of the currently forming candle from analysis.
+- Data-quality checks for duplicate timestamps, invalid OHLC ranges and missing data.
+- Separate market-structure engine for confirmed swing/BOS/CHoCH context.
+- Liquidity reference levels and wick-rejection sweep detection.
+- Broker-aware position-sizing helper using MT5 `order_calc_profit` and broker volume constraints.
+- Dashboard panels for bid/ask/spread, structure and liquidity.
+- Initial unit tests for data validation and risk sizing.
+
+## Requirements
+
+- Windows desktop with MetaTrader 5 terminal installed and logged in.
+- Python version compatible with the MetaTrader5 package.
+- The broker's exact gold symbol configured in `config.py` (often XAUUSD, XAUUSDm, GOLD, etc.).
+
+Install from this directory:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+## Run the dashboard
+
+```bash
+python run.py
+```
+
+Open http://127.0.0.1:5000.
+
+The MT5 terminal must be running and connected. The dashboard reads closed candles and current bid/ask quotes. If MT5 is unavailable, the application only uses a historical CSV if it exists and contains enough data; it labels that mode clearly. If neither source is available, it fails visibly instead of presenting synthetic data as live market data.
+
+## Historical training pipeline
+
+The training pipeline expects a real 15-minute XAU/USD OHLC CSV at `data/raw/gold_15m.csv` with columns:
+
+`datetime, open, high, low, close`
+
+Use broker-exported data with a consistent symbol and timestamp basis. Aim for multiple years of history, but inspect quality and gaps first.
+
+```bash
+python stage1_preprocess.py
+python stage2_train.py
+python run.py
+```
+
+**Important:** Never train or evaluate the model on synthetic sample candles and then interpret its scores as live-market probabilities. The committed sample/setup statistics are historical project artifacts, not verified current performance. The raw CSV in the repository may be empty; supply genuine MT5 history before rebuilding the model.
+
+## Tests
+
+From this directory:
+
+```bash
+python -m pytest -q
+```
+
+## Important limitations
+
+- BOS/CHoCH and liquidity levels are rule-based context, not guaranteed reversal signals.
+- The existing Random Forest score is a classification score, not a calibrated probability of winning.
+- Existing backtest labels need further audit for same-candle SL/TP collisions, spread, commissions, slippage and purged chronological validation.
+- Economic-calendar, DXY, Treasury-yield and news feeds are not yet connected. Do not infer fundamental conditions from missing data.
+- Position sizing helper is not an order-execution feature. It should be validated against the broker's symbol contract specifications and account currency.
+- No automated order execution is enabled.
+
+## Development branch
+
+`feature/aedox-intelligence-upgrade`
