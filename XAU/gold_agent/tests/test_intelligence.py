@@ -1,5 +1,7 @@
 import pandas as pd
-from analysis.data_quality import validate_ohlc
+from intelligence.data_quality import validate_ohlc
+from intelligence.market_structure import detect_market_structure
+from intelligence.liquidity import detect_liquidity
 from strategy.risk_manager import size_from_loss_per_lot
 
 
@@ -27,3 +29,13 @@ def test_risk_sizing_rounds_down_to_volume_step():
 def test_risk_sizing_rejects_below_minimum():
     result = size_from_loss_per_lot(1, 500, 0.01, 10, 0.01)
     assert result["volume"] == 0.0
+
+
+def test_market_structure_handles_short_history():
+    result = detect_market_structure(pd.DataFrame({"high":[2,3],"low":[1,2],"close":[1.5,2.5]}))
+    assert result["trend"] == "NEUTRAL"
+
+
+def test_liquidity_handles_short_history():
+    result = detect_liquidity(pd.DataFrame({"high":[2,3],"low":[1,2],"close":[1.5,2.5]}))
+    assert result["sweep"] == "NONE"
