@@ -1,0 +1,46 @@
+name: Package Aedox Gold Analysis Agent
+
+on:
+  push:
+    branches:
+      - feature/aedox-intelligence-upgrade
+    paths:
+      - "XAU/gold_agent/**"
+      - ".github/workflows/package-gold-agent.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Run intelligence unit tests
+        working-directory: XAU/gold_agent
+        run: python -m pytest -q
+      - name: Build clean project ZIP
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -a XAU/gold_agent dist/gold_agent
+          find dist/gold_agent -type d -name "__pycache__" -prune -exec rm -rf {} +
+          find dist/gold_agent -type f -name "*.pyc" -delete
+          rm -rf dist/gold_agent/.pytest_cache dist/gold_agent/.venv
+          cd dist
+          zip -r Aedox_Gold_Analysis_Agent.zip gold_agent
+      - name: Upload project ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aedox-Gold-Analysis-Agent-ZIP
+          path: dist/Aedox_Gold_Analysis_Agent.zip
+          if-no-files-found: error
+          retention-days: 14
