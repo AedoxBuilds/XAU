@@ -1,0 +1,2 @@
+setups_total,train_rows,test_rows,accuracy,roc_auc,test_all_win_rate,test_all_expectancy_R,test_picked_trades,test_picked_win_rate,test_picked_expectancy_R
+145,116,29,0.621,0.643,27.586,0.013,13,38.462,0.312

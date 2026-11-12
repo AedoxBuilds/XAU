@@ -1,0 +1,12 @@
+group,trades,win_rate_%,expectancy_R,total_R,max_drawdown_R,max_losing_streak
+ALL setups,145,40.69,0.36,52.83,8.61,6
+session: Asia,37,40.54,0.33,12.15,5.38,6
+session: London,32,34.38,0.05,1.49,9.0,9
+session: New York,66,46.97,0.61,40.16,3.0,3
+session: Off-hours,10,20.0,-0.1,-0.97,4.0,4
+type: FVG,132,42.42,0.42,54.97,5.61,5
+type: OB,13,23.08,-0.17,-2.15,3.15,4
+zone TF: D,22,31.82,0.03,0.67,6.0,6
+zone TF: H4,123,42.28,0.42,52.16,7.61,7
+side: BUY,99,40.4,0.36,35.95,6.38,7
+side: SELL,46,41.3,0.37,16.88,6.0,5

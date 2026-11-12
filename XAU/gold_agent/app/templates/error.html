@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-danger">
+    <h4>Something went wrong</h4>
+    <p>{{ error }}</p>
+    <small>Did you run stage1_preprocess.py and stage2_train.py first?</small>
+</div>
+{% endblock %}

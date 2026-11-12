@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+{% if note %}<div class="alert alert-warning">{{ note }}</div>{% endif %}
+
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <h3>🥇 Gold Analysis Agent</h3>
+    <span class="text-muted">Price <b>{{ price }}</b> · last closed 15m candle {{ last_candle }} · refreshed {{ updated }}</span>
+</div>
+
+<div class="row mb-3">
+    {% for name, b in biases %}
+    <div class="col-4">
+        <div class="card p-3 text-center bias-{{ b }}">
+            <small>{{ name }} bias</small><h4 class="mb-0">{{ b }}</h4>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div class="alert alert-info">{{ plan }}</div>
+
+<div class="card p-3 mb-3">
+    <h5>Setups in the last {{ last_bars }} candles (15m confirmation)</h5>
+    {% if setups %}
+    <table class="table table-sm mb-0">
+        <tr><th>Time</th><th>Side</th><th>Zone</th><th>Entry</th><th>SL</th><th>TP (1:{{ rr }})</th><th>Model win chance</th><th>Verdict</th></tr>
+        {% for s in setups %}
+        <tr class="{{ 'table-success' if s.verdict == 'STRONG' else '' }}">
+            <td>{{ s.time }}</td><td><b>{{ s.side }}</b></td><td>{{ s.zone }}</td>
+            <td>{{ s.entry }}</td><td>{{ s.stop }}</td><td>{{ s.target }}</td>
+            <td>{{ s.p_win }}%</td><td>{{ s.verdict }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="mb-0 text-muted">No confirmed setup right now. Wait for price to tap a zone that matches the weekly bias.</p>
+    {% endif %}
+</div>
+
+<div class="card p-3 mb-3 text-center">
+    <img src="{{ url_for('static', filename='chart.png') }}?t={{ updated }}" class="img-fluid" alt="chart">
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card p-3 mb-3">
+            <h5>Active zones (nearest to price)</h5>
+            <table class="table table-sm mb-0">
+                <tr><th>TF</th><th>Type</th><th>Side</th><th>Bottom</th><th>Top</th><th>Distance</th><th>Weekly match</th></tr>
+                {% for z in zones %}
+                <tr><td>{{ z.tf }}</td><td>{{ z.kind }}</td><td>{{ z.side }}</td><td>{{ z.bottom }}</td>
+                    <td>{{ z.top }}</td><td>{{ z.dist }}</td><td>{{ '✅' if z.aligned else '—' }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3 mb-3">
+            <h5>Quant stats (backtest of YOUR rules)</h5>
+            <table class="table table-sm mb-0">
+                <tr><th>Group</th><th>Trades</th><th>Win %</th><th>Expectancy R</th><th>Max DD (R)</th><th>Losing streak</th></tr>
+                {% for r in stats %}
+                <tr><td>{{ r['group'] }}</td><td>{{ r['trades'] }}</td><td>{{ r['win_rate_%'] }}</td>
+                    <td class="{{ 'text-success' if r['expectancy_R'] > 0 else 'text-danger' }}">{{ r['expectancy_R'] }}</td>
+                    <td>{{ r['max_drawdown_R'] }}</td><td>{{ r['max_losing_streak'] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if metrics %}
+{% set m = metrics[0] %}
+<div class="card p-3 mb-3">
+    <h5>Model check (on unseen, newest data)</h5>
+    <p class="mb-1">ROC AUC: <b>{{ m['roc_auc'] }}</b> (0.5 = no skill) · all setups: win {{ m['test_all_win_rate'] }}%, expectancy {{ m['test_all_expectancy_R'] }}R
+    · model picks: {{ m['test_picked_trades'] }} trades, win {{ m['test_picked_win_rate'] }}%, expectancy {{ m['test_picked_expectancy_R'] }}R</p>
+    <small class="text-muted">Analysis tool only. Past results do not guarantee future results. You place the trades yourself.</small>
+</div>
+{% endif %}
+{% endblock %}
