@@ -1,42 +1,48 @@
 # ============================================================
-# config.py  -  every setting of the project in ONE place
-# (run all files from the project root folder)
+# config.py - centralized Gold Analysis Agent settings
 # ============================================================
+from pathlib import Path
 
-# ---------- file paths ----------
-RAW_CSV = "data/raw/gold_15m.csv"          # your 15-minute gold candles
-PROCESSED_CSV = "data/processed/setups.csv"
-MODEL_FILE = "models/gold_model.pkl"
-STATS_FILE = "models/quant_stats.csv"
-METRICS_FILE = "models/model_metrics.csv"
-CHART_FILE = "app/static/chart.png"
+BASE_DIR = Path(__file__).resolve().parent
+RAW_CSV = str(BASE_DIR / "data/raw/gold_15m.csv")
+PROCESSED_CSV = str(BASE_DIR / "data/processed/setups.csv")
+MODEL_FILE = str(BASE_DIR / "models/gold_model.pkl")
+STATS_FILE = str(BASE_DIR / "models/quant_stats.csv")
+METRICS_FILE = str(BASE_DIR / "models/model_metrics.csv")
+CHART_FILE = str(BASE_DIR / "app/static/chart.png")
 
-# ---------- strategy settings (change these to match YOUR rules) ----------
-RR = 2.0                  # reward : risk  (2.0 means 1:2)
-SWING_N = {"W": 1, "D": 2, "H4": 2}   # candles on each side of a swing high/low
+# Strategy settings (preserve existing strategy until new rules are validated)
+RR = 2.0
+SWING_N = {"W": 1, "D": 2, "H4": 2}
 ATR_PERIOD = 14
-OB_DISPLACEMENT = 1.2     # order block: next candle body must be >= 1.2 x ATR
-MIN_FVG_ATR = 0.1         # ignore tiny FVGs (smaller than 0.1 x ATR)
-SL_BUFFER_ATR = 0.1       # stop-loss buffer beyond the zone / candle
-MIN_RISK_ATR = 0.3        # skip setups with a stop that is too tight
-MAX_RISK_ATR = 5.0        # skip setups with a stop that is too wide
-MAX_HOLD_BARS = 96        # a trade is closed after 96 x 15min = 24 hours
-ZONE_MAX_AGE = {"D": 30, "H4": 60}    # zone expires after 30 days / 60 four-hour candles
+OB_DISPLACEMENT = 1.2
+MIN_FVG_ATR = 0.1
+SL_BUFFER_ATR = 0.1
+MIN_RISK_ATR = 0.3
+MAX_RISK_ATR = 5.0
+MAX_HOLD_BARS = 96
+ZONE_MAX_AGE = {"D": 30, "H4": 60}
 
-# ---------- model ----------
-TEST_SIZE = 0.2           # last 20% of the time = test (no shuffle)
-MIN_PROB = 0.5            # model probability needed to call a setup "strong"
+# Model
+TEST_SIZE = 0.2
+MIN_PROB = 0.5
 FEATURES = [
     "direction", "kind_ob", "tf_daily", "d_rel", "h4_rel",
     "zone_size_atr", "risk_atr", "atr", "hour", "session", "dow",
     "confluence", "prior_touches", "zone_age_hours",
 ]
 
-# ---------- live ----------
-LIVE_SYMBOL = "GC=F"      # gold futures on Yahoo Finance
-REFRESH_SECONDS = 60      # dashboard refresh time
-CHART_BARS = 120          # candles shown on the chart
-LAST_BARS = 3             # a setup counts as "live" if it appeared in the last 3 candles
-
-MT5_SYMBOL = "XAUUSD"
-MT5_SERVER_OFFSET_HOURS = 2
+# Live market data
+MT5_SYMBOL = "XAUUSD"  # Verify exact broker symbol in MT5 Market Watch.
+MT5_TIMEFRAMES = {
+    "W": ("TIMEFRAME_W1", 1200),
+    "D": ("TIMEFRAME_D1", 3000),
+    "H4": ("TIMEFRAME_H4", 6000),
+    "M15": ("TIMEFRAME_M15", 12000),
+}
+REFRESH_SECONDS = 60
+CHART_BARS = 120
+LAST_BARS = 3
+LIQUIDITY_SWING = 3
+LIQUIDITY_LOOKBACK = 200
+LIQUIDITY_ATR_TOLERANCE = 0.10
